@@ -3,6 +3,8 @@
 var test = require('tape');
 var availableTypedArrays = require('available-typed-arrays')();
 var forEach = require('for-each');
+var typedArrayBuffer = require('typed-array-buffer');
+var SafeBuffer = require('safe-buffer').Buffer;
 
 var toBuffer = require('../');
 var fixtures = require('./fixtures.json');
@@ -65,6 +67,21 @@ test('handle all TA types', function (t) {
 			new Buffer(fixtures[type].output),
 			type + ' should be converted to Buffer correctly'
 		);
+	});
+
+	t.test('TA subset view on another one', { skip: typeof Float64Array === 'undefined' || typeof Uint8Array === 'undefined' }, function (st) {
+		var arr = new Uint8Array(1e3);
+		var buffer = typedArrayBuffer(arr);
+		var subsetLength = 5;
+		var arr2 = new Float64Array(buffer, 800, subsetLength);
+
+		st.deepEqual(
+			toBuffer(arr2),
+			SafeBuffer.alloc(subsetLength * 8, buffer),
+			'Uint8Array subset view on Float64Array should be converted to Buffer correctly'
+		);
+
+		st.end();
 	});
 
 	t.end();
