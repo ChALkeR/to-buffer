@@ -70,16 +70,33 @@ test('handle all TA types', function (t) {
 	});
 
 	t.test('TA subset view on another one', { skip: typeof Float64Array === 'undefined' || typeof Uint8Array === 'undefined' }, function (st) {
-		var arr = new Uint8Array(1e3);
-		var buffer = typedArrayBuffer(arr);
-		var subsetLength = 5;
-		var arr2 = new Float64Array(buffer, 800, subsetLength);
+		var arr = new Uint8Array(100);
+		for (var i = 0; i < arr.length; i += 1) {
+			arr[i] = i;
+		}
 
-		st.deepEqual(
-			toBuffer(arr2),
-			SafeBuffer.alloc(subsetLength * 8, buffer),
-			'Uint8Array subset view on Float64Array should be converted to Buffer correctly'
-		);
+		var buffer = typedArrayBuffer(arr);
+		var expectedHex = '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60616263';
+		st.equal(SafeBuffer.from(buffer).toString('hex'), expectedHex, 'sanity check');
+
+		forEach(availableTypedArrays, function (type) {
+			var TA = global[type];
+			var arr2 = new TA(buffer, 8, 4);
+
+			var expected = SafeBuffer.from(buffer, 8, 4 * arr2.BYTES_PER_ELEMENT);
+			st.equal(
+				expected.toString('hex'),
+				expectedHex.slice(8 * 2, expected.toString('hex').length * 2), // TODO: fix these slice boundaries?
+				'sanity check'
+			);
+
+			var result = toBuffer(arr2);
+			st.deepEqual(
+				result,
+				expected,
+				'Uint8Array subset view on ' + type + ' should be converted to Buffer correctly'
+			);
+		});
 
 		st.end();
 	});
